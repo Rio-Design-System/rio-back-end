@@ -37,13 +37,18 @@ import { AIModelsController } from "../controllers/ai-models.controller"; // ←
 import { DesignSystemsController } from "../controllers/design-systems.controller";
 
 import { UserMiddleware } from "../middleware/user.middleware";
+import { GenerateDesignBasedOnExistingUseCase } from "../../../application/use-cases/generate-design-based-on-existing.use-case";
 
+import { JsonToToonService } from "../../services/json-to-toon.service";
 
 export const setupDependencies = () => {
 
     // Repositories
+    const jsonToToonService = new JsonToToonService();
     const userRepository = new TypeORMUserRepository();
     const designVersionRepository = new TypeORMDesignVersionRepository();
+    
+
 
     // Services
     const trelloService = new TrelloService();
@@ -61,6 +66,12 @@ export const setupDependencies = () => {
     const generateDesignFromTextUseCase = new GenerateDesignFromTextUseCase(defaultAiDesignService);
     const generateDesignFromConversationUseCase = new GenerateDesignFromConversationUseCase(defaultAiDesignService);
     const editDesignWithAIUseCase = new EditDesignWithAIUseCase(defaultAiDesignService);
+    const generateDesignBasedOnExistingUseCase = new GenerateDesignBasedOnExistingUseCase(
+        defaultAiDesignService,
+        jsonToToonService
+        );
+
+
 
     const saveDesignVersionUseCase = new SaveDesignVersionUseCase(designVersionRepository);
     const getAllDesignVersionsUseCase = new GetAllDesignVersionsUseCase(designVersionRepository);
@@ -76,7 +87,8 @@ export const setupDependencies = () => {
     const designController = new DesignController(
         generateDesignFromTextUseCase,
         generateDesignFromConversationUseCase,
-        editDesignWithAIUseCase
+        editDesignWithAIUseCase,
+        generateDesignBasedOnExistingUseCase
     );
 
     const designVersionController = new DesignVersionController(

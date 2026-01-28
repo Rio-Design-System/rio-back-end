@@ -6,11 +6,13 @@ import { ConversationMessage, DesignGenerationResult, IAiDesignService } from '.
 import { htmlPreviewPrompt, designSystemChangeWarningPrompt } from '../config/prompt.config';
 import { CostBreakdown, IAiCostCalculator } from '../../domain/services/IAiCostCanculator';
 import { iconTools } from '../config/ai-tools.config';
+import { DesignSystemExtractorService } from './design-system-extractor.service';
 
 interface AiMessage {
     role: 'system' | 'user' | 'assistant';
     content: string;
 }
+
 interface FunctionToolCall {
     id: string;
     type: 'function';
@@ -19,13 +21,31 @@ interface FunctionToolCall {
         arguments: string;
     };
 }
+
+// Default timeout in milliseconds (10 minutes)
+const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000;
+
 export class AiGenerateDesignService implements IAiDesignService {
     private promptBuilder: PromptBuilderService;
     private costCalculator: IAiCostCalculator;
+    private designSystemExtractor: DesignSystemExtractorService;
 
     constructor(promptBuilderService: PromptBuilderService, costCalculator: IAiCostCalculator) {
         this.promptBuilder = promptBuilderService;
         this.costCalculator = costCalculator;
+        this.designSystemExtractor = new DesignSystemExtractorService();
+    }
+
+    /**
+     * Create OpenAI client with timeout configuration
+     */
+    private createOpenAIClient(aiModel: AIModelConfig, timeoutMs: number = DEFAULT_TIMEOUT_MS): OpenAI {
+        return new OpenAI({
+            baseURL: aiModel.baseURL,
+            apiKey: aiModel.apiKey,
+            timeout: timeoutMs,
+            maxRetries: 2,
+        });
     }
 
     async generateDesign(prompt: string, modelId: string, designSystemId: string): Promise<any> {
@@ -43,10 +63,7 @@ export class AiGenerateDesignService implements IAiDesignService {
 
             console.log(`🎨 Generating design with GPT-4${designSystemId ? ` + ${this.promptBuilder.getDesignSystemDisplayName(designSystemId)}` : ''}`);
 
-            const openai: OpenAI = new OpenAI({
-                baseURL: aiModel.baseURL,
-                apiKey: aiModel.apiKey,
-            });
+            const openai = this.createOpenAIClient(aiModel);
 
             const completion = await openai.chat.completions.create({
                 model: aiModel.id,
@@ -100,10 +117,7 @@ export class AiGenerateDesignService implements IAiDesignService {
 
             const messages = this.buildConversationMessages(userMessage, history, designSystemId);
             const aiModel: AIModelConfig = getModelById(modelId)
-            const openai: OpenAI = new OpenAI({
-                baseURL: aiModel.baseURL,
-                apiKey: aiModel.apiKey,
-            });
+            const openai = this.createOpenAIClient(aiModel);
 
             console.log("--- 1. Sending Conversation to GPT for JSON ---");
 
@@ -211,10 +225,7 @@ export class AiGenerateDesignService implements IAiDesignService {
             console.log(`🎨 Design System: ${this.promptBuilder.getDesignSystemDisplayName(designSystemId) || 'default design system'}`);
             console.log("Design size:", JSON.stringify(currentDesign).length, "characters");
 
-            const openai: OpenAI = new OpenAI({
-                baseURL: aiModel.baseURL,
-                apiKey: aiModel.apiKey,
-            });
+            const openai = this.createOpenAIClient(aiModel);
 
             let completion = await openai.chat.completions.create({
                 model: aiModel.id,
@@ -308,6 +319,152 @@ export class AiGenerateDesignService implements IAiDesignService {
             console.error("An error occurred in editDesignWithAI:", error);
             throw new Error(`Failed to edit design. Original error: ${error instanceof Error ? error.message : String(error)}`);
         }
+    }
+
+    async generateDesignBasedOnExisting(
+        userMessage: string,
+        history: ConversationMessage[],
+        referenceToon: string,
+        modelId: string
+    ): Promise<DesignGenerationResult> {
+        try {
+            console.log("🎨 Generating design based on existing design system");
+            console.log("Reference design size (TOON):", referenceToon.length, "characters");
+
+            const messages = this.buildBasedOnExistingMessages(
+                userMessage,
+                history,
+                referenceToon // ← TOON string
+            );
+
+            const aiModel: AIModelConfig = getModelById(modelId);
+            const openai = this.createOpenAIClient(aiModel);
+
+            console.log("--- 1. Sending request to analyze design system and create new design ---");
+
+            let completion = await openai.chat.completions.create({
+                model: aiModel.id,
+                messages: messages,
+                tools: iconTools,
+            });
+
+            // Handle tool calls loop
+            while (completion.choices[0]?.message?.tool_calls) {
+                const toolCalls = completion.choices[0].message.tool_calls as FunctionToolCall[];
+                console.log(`--- Processing ${toolCalls.length} tool calls ---`);
+
+                const toolResults = await this.handleToolCalls(toolCalls);
+
+                messages.push({
+                    role: 'assistant',
+                    content: completion.choices[0].message.content || '',
+                    tool_calls: toolCalls,
+                } as any);
+
+                messages.push(...toolResults as any);
+
+                completion = await openai.chat.completions.create({
+                    model: aiModel.id,
+                    messages: messages,
+                    tools: iconTools,
+                });
+            }
+
+            const responseText = completion.choices[0]?.message?.content;
+            if (!responseText) {
+                throw new Error("GPT API returned empty response.");
+            }
+
+            console.log("--- 2. Received new design from GPT ---");
+
+            const designData = this.extractDesignFromResponse(responseText);
+            if (!designData) {
+                console.error("Failed to extract JSON. Raw response:", responseText);
+                throw new Error("Failed to extract valid design JSON from AI response.");
+            }
+
+            const aiMessage = this.extractMessageFromResponse(responseText);
+
+            let costBreakdown: CostBreakdown | null = null;
+            const usage = completion.usage;
+
+            if (usage) {
+                costBreakdown = this.costCalculator.calculateCost(
+                    aiModel,
+                    usage.prompt_tokens,
+                    usage.completion_tokens
+                );
+                console.log(`💰 Cost breakdown: Input: $${costBreakdown.inputCost}, Output: $${costBreakdown.outputCost}, Total: $${costBreakdown.totalCost}`);
+            } else {
+                const inputTokens = this.costCalculator.estimateTokens(JSON.stringify(messages));
+                const outputTokens = this.costCalculator.estimateTokens(responseText);
+                costBreakdown = this.costCalculator.calculateCost(aiModel, inputTokens, outputTokens);
+            }
+
+            return {
+                message: aiMessage,
+                design: designData,
+                previewHtml: null,
+                cost: costBreakdown
+            };
+
+        } catch (error) {
+            console.error("An error occurred in generateDesignBasedOnExisting:", error);
+
+            // Provide more specific error message for timeouts
+            if (error instanceof Error && error.message.includes('timed out')) {
+                throw new Error(`Request timed out. The reference design may be too complex. Try using a simpler design as reference or break it into smaller parts.`);
+            }
+
+            throw new Error(`Failed to generate design based on existing. Original error: ${error instanceof Error ? error.message : String(error)}`);
+        }
+    }
+
+    private buildBasedOnExistingMessages(
+        currentMessage: string,
+        history: ConversationMessage[],
+        referenceToon: string
+    ): AiMessage[] {
+        const systemPrompt = this.promptBuilder.buildBasedOnExistingSystemPrompt();
+
+        const messages: AiMessage[] = [
+            { role: 'system', content: systemPrompt }
+        ];
+
+        const recentHistory = history.slice(-3);
+        for (const msg of recentHistory) {
+            messages.push({
+                role: msg.role as 'user' | 'assistant',
+                content: msg.content
+            });
+        }
+
+        const request = `REFERENCE DESIGN (TOON Format - extract design system from this):
+\`\`\`
+${referenceToon}
+\`\`\`
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+USER REQUEST FOR NEW DESIGN: ${currentMessage}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+INSTRUCTIONS:
+1. Analyze the REFERENCE DESIGN (in TOON format) to understand its design system
+   - Extract colors, spacing, typography, borders, shadows, component patterns
+2. Create a NEW design based on the user's request
+3. Apply the SAME design system extracted from the reference
+4. The new design should feel like it belongs to the same project
+5. Return the complete new design as a valid Figma JSON array (NOT TOON - return proper JSON!)
+6. Start your response with a brief description, then the JSON`;
+
+        messages.push({
+            role: 'user',
+            content: request
+        });
+
+        return messages;
     }
 
     // private async generateHtmlPreview(designJson: object, openai: OpenAI, aiModel: AIModelConfig): Promise<{ design: string, inputTokens: number, outputTokens: number }> {
@@ -415,7 +572,7 @@ export class AiGenerateDesignService implements IAiDesignService {
             });
         }
 
-        const designStr = JSON.stringify(currentDesign, null, 2);
+        const designStr = JSON.stringify(currentDesign);
         const designSystemReminder = this.buildDesignSystemReminder(designSystemName, isDesignSystemChanged);
         const editInstructions = this.buildEditInstructions(designSystemName, isDesignSystemChanged);
 
@@ -571,36 +728,35 @@ ${isChanged ? `⚠️ The current design uses a different system - CONVERT EVERY
     private async handleToolCalls(
         toolCalls: FunctionToolCall[],
     ): Promise<{ tool_call_id: string; role: 'tool'; content: string }[]> {
-        const toolResults: { tool_call_id: string; role: 'tool'; content: string }[] = [];
 
-        for (const toolCall of toolCalls) {
-            const { name, arguments: args } = toolCall.function;
-            const parsedArgs = JSON.parse(args);
+        const results = await Promise.all(
+            toolCalls.map(async (toolCall) => {
+                const { name, arguments: args } = toolCall.function;
+                const parsedArgs = JSON.parse(args);
 
-            let result: string;
+                let result: string;
 
-            switch (name) {
-                case 'searchIcons':
-                    const searchResult = await this.searchIcons(parsedArgs.query);
-                    result = JSON.stringify(searchResult);
-                    break;
+                switch (name) {
+                    case 'searchIcons':
+                        const searchResult = await this.searchIcons(parsedArgs.query);
+                        result = JSON.stringify(searchResult);
+                        break;
+                    case 'getIconUrl':
+                        const url = this.getIconUrl(parsedArgs.iconData);
+                        result = JSON.stringify({ url });
+                        break;
+                    default:
+                        result = JSON.stringify({ error: `Unknown tool: ${name}` });
+                }
 
-                case 'getIconUrl':
-                    const url = this.getIconUrl(parsedArgs.iconData);
-                    result = JSON.stringify({ url });
-                    break;
+                return {
+                    tool_call_id: toolCall.id,
+                    role: 'tool' as const,
+                    content: result,
+                };
+            })
+        );
 
-                default:
-                    result = JSON.stringify({ error: `Unknown tool: ${name}` });
-            }
-
-            toolResults.push({
-                tool_call_id: toolCall.id,
-                role: 'tool',
-                content: result,
-            });
-        }
-
-        return toolResults;
+        return results;
     }
 }
