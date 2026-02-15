@@ -101,7 +101,6 @@ export const generateBasedOnExistingValidation = [
         .isArray().withMessage('History must be an array'),
 
     body('modelId')
-        .optional()
         .isString().withMessage('Model ID must be a string')
         .isIn(AI_MODELS.map(model => model.id)).withMessage('Invalid model'),
 
@@ -122,6 +121,41 @@ export const saveDesignVersionValidation = [
 ];
 
 export const designVersionIdParamValidation = [
+    param('id')
+        .isString().withMessage('ID must be a string'),
+];
+
+// UI Library validations
+export const createUILibraryProjectValidation = [
+    body('name')
+        .notEmpty().withMessage('Project name is required')
+        .isString().withMessage('Project name must be a string')
+        .isLength({ max: 255 }).withMessage('Project name must be less than 255 characters'),
+];
+
+export const createUILibraryComponentValidation = [
+    body('projectId')
+        .notEmpty().withMessage('Project ID is required')
+        .isString().withMessage('Project ID must be a string'),
+
+    body('name')
+        .notEmpty().withMessage('Component name is required')
+        .isString().withMessage('Component name must be a string')
+        .isLength({ max: 255 }).withMessage('Component name must be less than 255 characters'),
+
+    body('description')
+        .notEmpty().withMessage('Component description is required')
+        .isString().withMessage('Component description must be a string'),
+
+    body('designJson')
+        .notEmpty().withMessage('Design JSON is required'),
+
+    body('previewImage')
+        .optional({ nullable: true })
+        .isString().withMessage('Preview image must be a string'),
+];
+
+export const uiLibraryIdParamValidation = [
     param('id')
         .isString().withMessage('ID must be a string'),
 ];
@@ -203,7 +237,6 @@ export const generatePrototypeValidation = [
         .isArray({ min: 2 }).withMessage('At least 2 frames are required'),
 
     body('modelId')
-        .optional()
         .isString().withMessage('Model ID must be a string')
         .isIn(AI_MODELS.map(model => model.id)).withMessage('Invalid model'),
 ];

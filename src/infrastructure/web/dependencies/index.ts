@@ -1,40 +1,48 @@
 // src/infrastructure/web/dependencies/index.ts
 
 // Services
-import { TrelloService } from "../../services/trello.service";
-import { AiExtractTasksService } from "../../services/ai-extract-tasks.service";
-import { AiGenerateDesignService } from "../../services/ai-generate-design.service";
-import { PromptBuilderService } from "../../services/prompt-builder.service";
-import { AiCostCalculatorService } from "../../services/ai-cost.calculator.service";
 import { IconService } from "../../services/icon.service";
-import { OpenAIClientFactory } from "../../services/openai-client.factory";
-import { Timer } from "../../services/timer.service";
+import { TrelloService } from "../../services/trello.service";
 import { JsonToToonService } from "../../services/json-to-toon.service";
-import { ToolCallHandlerService } from "../../services/tool-call-handler.service";
+import { OpenAIClientFactory } from "../../services/openai-client.factory";
 import { MessageBuilderService } from "../../services/message-builder.service";
 import { ResponseParserService } from "../../services/response-parser.service";
+import { AiExtractTasksService } from "../../services/ai-extract-tasks.service";
+import { ToolCallHandlerService } from "../../services/tool-call-handler.service";
+import { AiGenerateDesignService } from "../../services/ai-generate-design.service";
+import { AiCostCalculatorService } from "../../services/ai-cost.calculator.service";
+import { GoogleAuthService } from "../../services/google-auth.service";
+import { TokenStoreService } from "../../services/token-store.service";
 
 
 // Repositories
-import { TypeORMDesignVersionRepository } from "../../repository/typeorm-design-version.repository";
 import { TypeORMUserRepository } from "../../repository/typeorm-user.repository";
 import { TypeORMClientErrorRepository } from "../../repository/typeorm-client-error.repository";
+import { TypeORMUILibraryRepository } from "../../repository/typeorm-ui-library.repository";
+
 
 // Use Cases - Tasks
-import { GetBoardListsUseCase } from "../../../application/use-cases/get-board-lists-in-trello.use-case";
 import { ExtractTasksUseCase } from "../../../application/use-cases/extract-tasks.use-case";
 import { AddTasksToTrelloUseCase } from "../../../application/use-cases/add-tasks-to-trello.use-case";
+import { GetBoardListsUseCase } from "../../../application/use-cases/get-board-lists-in-trello.use-case";
 
 // Use Cases - Design
 import { GenerateDesignUseCase } from "../../../application/use-cases/generate-design.use-case";
-import { GenerateDesignFromConversationUseCase } from "../../../application/use-cases/generate-design-from-conversation.use-case";
 import { EditDesignWithAIUseCase } from "../../../application/use-cases/edit-design-with-ai.use-case";
+import { GeneratePrototypeConnectionsUseCase } from "../../../application/use-cases/generate-prototype-connections.use-case";
+import { GenerateDesignBasedOnExistingUseCase } from "../../../application/use-cases/generate-design-based-on-existing.use-case";
+import { GenerateDesignFromConversationUseCase } from "../../../application/use-cases/generate-design-from-conversation.use-case";
 
-// Use Cases - Design Versions
-import { SaveDesignVersionUseCase } from "../../../application/use-cases/save-design-version.use-case";
-import { GetAllDesignVersionsUseCase } from "../../../application/use-cases/get-all-design-versions.use-case";
-import { GetDesignVersionByIdUseCase } from "../../../application/use-cases/get-design-version-by-id.use-case";
-import { DeleteDesignVersionUseCase } from "../../../application/use-cases/delete-design-version.use-case";
+import { CreateUILibraryProjectUseCase } from "../../../application/use-cases/create-ui-library-project.use-case";
+import { GetUILibraryProjectsUseCase } from "../../../application/use-cases/get-ui-library-projects.use-case";
+import { DeleteUILibraryProjectUseCase } from "../../../application/use-cases/delete-ui-library-project.use-case";
+import { CreateUILibraryComponentUseCase } from "../../../application/use-cases/create-ui-library-component.use-case";
+import { GetUILibraryComponentsByProjectUseCase } from "../../../application/use-cases/get-ui-library-components-by-project.use-case";
+import { DeleteUILibraryComponentUseCase } from "../../../application/use-cases/delete-ui-library-component.use-case";
+
+// Use Cases - Auth
+import { GoogleSignInUseCase } from "../../../application/use-cases/google-sign-in.use-case";
+import { VerifySessionUseCase } from "../../../application/use-cases/verify-session.use-case";
 
 // Use Cases - Client Errors
 import { ReportClientErrorUseCase } from "../../../application/use-cases/report-client-error.use-case";
@@ -43,15 +51,14 @@ import { ReportClientErrorUseCase } from "../../../application/use-cases/report-
 import { TaskController } from "../controllers/task.controller";
 import { TrelloController } from "../controllers/trello.controller";
 import { DesignController } from "../controllers/design.controller";
-import { DesignVersionController } from "../controllers/design-version.controller";
 import { AIModelsController } from "../controllers/ai-models.controller";
-import { DesignSystemsController } from "../controllers/design-systems.controller";
 import { ClientErrorController } from "../controllers/client-error.controller";
+import { DesignSystemsController } from "../controllers/design-systems.controller";
+import { UILibraryController } from "../controllers/ui-library.controller";
+import { AuthController } from "../controllers/auth.controller";
 
-import { UserMiddleware } from "../middleware/user.middleware";
-import { GenerateDesignBasedOnExistingUseCase } from "../../../application/use-cases/generate-design-based-on-existing.use-case";
-import { GeneratePrototypeConnectionsUseCase } from "../../../application/use-cases/generate-prototype-connections.use-case";
-import { PrototypeService } from "../../services/prototype.service";
+import { AuthMiddleware } from "../middleware/auth.middleware";
+
 
 
 
@@ -60,34 +67,27 @@ export const setupDependencies = () => {
     // Repositories
     const jsonToToonService = new JsonToToonService();
     const userRepository = new TypeORMUserRepository();
-    const designVersionRepository = new TypeORMDesignVersionRepository();
+    const uiLibraryRepository = new TypeORMUILibraryRepository();
     const clientErrorRepository = new TypeORMClientErrorRepository();
 
 
     // Services
     const trelloService = new TrelloService();
-    const promptBuilderService = new PromptBuilderService();
     const aiCostCalculatorService = new AiCostCalculatorService()
     const iconService = new IconService();
     const clientFactory = new OpenAIClientFactory();
     const toolCallHandler = new ToolCallHandlerService(iconService);
-    const timer = new Timer('AI Design Generation');
     const responseParser = new ResponseParserService();
-    const messageBuilder = new MessageBuilderService(promptBuilderService);
-    const prototypeService = new PrototypeService(
-        clientFactory,
-        aiCostCalculatorService,
-    );
+    const messageBuilder = new MessageBuilderService();
+
     const aiExtractTasksService = new AiExtractTasksService(aiCostCalculatorService);
+
     const defaultAiDesignService = new AiGenerateDesignService(
-        promptBuilderService,
         aiCostCalculatorService,
-        iconService,
         clientFactory,
         toolCallHandler,
         responseParser,
         messageBuilder,
-        timer,
     );
 
     // Use Cases - Tasks
@@ -104,24 +104,32 @@ export const setupDependencies = () => {
     );
 
     const generatePrototypeConnectionsUseCase = new GeneratePrototypeConnectionsUseCase(
-        prototypeService
+        defaultAiDesignService
     );
 
-
-
-    const saveDesignVersionUseCase = new SaveDesignVersionUseCase(designVersionRepository);
-    const getAllDesignVersionsUseCase = new GetAllDesignVersionsUseCase(designVersionRepository);
-    const getDesignVersionByIdUseCase = new GetDesignVersionByIdUseCase(designVersionRepository);
-    const deleteDesignVersionUseCase = new DeleteDesignVersionUseCase(designVersionRepository);
+    const createUILibraryProjectUseCase = new CreateUILibraryProjectUseCase(uiLibraryRepository);
+    const getUILibraryProjectsUseCase = new GetUILibraryProjectsUseCase(uiLibraryRepository);
+    const deleteUILibraryProjectUseCase = new DeleteUILibraryProjectUseCase(uiLibraryRepository);
+    const createUILibraryComponentUseCase = new CreateUILibraryComponentUseCase(uiLibraryRepository);
+    const getUILibraryComponentsByProjectUseCase = new GetUILibraryComponentsByProjectUseCase(uiLibraryRepository);
+    const deleteUILibraryComponentUseCase = new DeleteUILibraryComponentUseCase(uiLibraryRepository);
 
     // Use Cases - Client Errors
     const reportClientErrorUseCase = new ReportClientErrorUseCase(clientErrorRepository);
+
+    // Auth Services & Use Cases
+    const googleAuthService = new GoogleAuthService();
+    const tokenStoreService = new TokenStoreService();
+    const googleSignInUseCase = new GoogleSignInUseCase(googleAuthService, userRepository);
+    const verifySessionUseCase = new VerifySessionUseCase(googleAuthService, userRepository);
 
     // Controllers
     const trelloController = new TrelloController(getBoardListsUseCase);
     const taskController = new TaskController(extractTasksUseCase, addTasksToTrelloUseCase, generateDesignUseCase);
 
-    const userMiddleware = new UserMiddleware(userRepository);
+    const authMiddleware = new AuthMiddleware(userRepository);
+
+    const authController = new AuthController(googleSignInUseCase, verifySessionUseCase, tokenStoreService);
 
     const designController = new DesignController(
         generateDesignFromConversationUseCase,
@@ -130,11 +138,13 @@ export const setupDependencies = () => {
         generatePrototypeConnectionsUseCase
     );
 
-    const designVersionController = new DesignVersionController(
-        saveDesignVersionUseCase,
-        getAllDesignVersionsUseCase,
-        getDesignVersionByIdUseCase,
-        deleteDesignVersionUseCase
+    const uiLibraryController = new UILibraryController(
+        createUILibraryProjectUseCase,
+        getUILibraryProjectsUseCase,
+        deleteUILibraryProjectUseCase,
+        createUILibraryComponentUseCase,
+        getUILibraryComponentsByProjectUseCase,
+        deleteUILibraryComponentUseCase
     );
 
     // AI Models Controller
@@ -150,10 +160,11 @@ export const setupDependencies = () => {
         taskController,
         trelloController,
         designController,
-        designVersionController,
+        uiLibraryController,
         aiModelsController,
         designSystemsController,
         clientErrorController,
-        userMiddleware
+        authMiddleware,
+        authController,
     };
 };
