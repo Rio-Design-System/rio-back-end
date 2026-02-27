@@ -31,18 +31,18 @@ export const AI_MODELS: AIModelConfig[] = [
     isFree: true
   },
   // // Gemini
-  {
-    id: 'gemini-3.1-pro-preview',
-    name: 'Gemini 3.1 Pro Preview',
-    description: 'Latest flagship - Advanced reasoning & multimodal',
-    icon: 'Gem',
-    maxTokens: 2000000,
-    apiKey: ENV_CONFIG.GEMINI_API_KEY,
-    baseURL: "https://generativelanguage.googleapis.com/v1beta",
-    inputPricePerMillion: 2.00,
-    outputPricePerMillion: 12.00,
-    isFree: false
-  },
+  // {
+  //   id: 'gemini-3.1-pro-preview',
+  //   name: 'Gemini 3.1 Pro Preview',
+  //   description: 'Latest flagship - Advanced reasoning & multimodal',
+  //   icon: 'Gem',
+  //   maxTokens: 2000000,
+  //   apiKey: ENV_CONFIG.GEMINI_API_KEY,
+  //   baseURL: "https://generativelanguage.googleapis.com/v1beta",
+  //   inputPricePerMillion: 2.00,
+  //   outputPricePerMillion: 12.00,
+  //   isFree: false
+  // },
   // {
   //   id: 'gemini-3-pro-preview',
   //   name: 'Gemini 3 Pro Preview',
@@ -79,18 +79,18 @@ export const AI_MODELS: AIModelConfig[] = [
   //   outputPricePerMillion: 10.00,
   //   isFree: false
   // },
-  // {
-  //   id: 'gemini-2.5-flash',
-  //   name: 'Gemini 2.5 Flash',
-  //   description: 'Best price-performance - Adaptive thinking',
-  //   icon: 'Gem',
-  //   maxTokens: 1000000,
-  //   apiKey: ENV_CONFIG.GEMINI_API_KEY,
-  //   baseURL: "https://generativelanguage.googleapis.com/v1beta",
-  //   inputPricePerMillion: 0.30,
-  //   outputPricePerMillion: 2.50,
-  //   isFree: false
-  // },
+  {
+    id: 'gemini-2.5-flash',
+    name: 'Gemini 2.5 Flash',
+    description: 'Best price-performance - Adaptive thinking',
+    icon: 'Gem',
+    maxTokens: 1000000,
+    apiKey: ENV_CONFIG.GEMINI_API_KEY,
+    baseURL: "https://generativelanguage.googleapis.com/v1beta",
+    inputPricePerMillion: 0.30,
+    outputPricePerMillion: 2.50,
+    isFree: true
+  },
   // {
   //   id: 'gemini-2.5-flash-lite',
   //   name: 'Gemini 2.5 Flash-Lite',
@@ -103,18 +103,18 @@ export const AI_MODELS: AIModelConfig[] = [
   //   outputPricePerMillion: 0.40,
   //   isFree: false
   // },
-  {
-    id: 'gemini-2.0-flash',
-    name: 'Gemini 2.0 Flash',
-    description: 'Workhorse model - Speed & efficiency',
-    icon: 'Gem',
-    maxTokens: 1000000,
-    apiKey: ENV_CONFIG.GEMINI_API_KEY,
-    baseURL: "https://generativelanguage.googleapis.com/v1beta",
-    inputPricePerMillion: 0.10,
-    outputPricePerMillion: 0.40,
-    isFree: true
-  },
+  // {
+  //   id: 'gemini-2.0-flash',
+  //   name: 'Gemini 2.0 Flash',
+  //   description: 'Workhorse model - Speed & efficiency',
+  //   icon: 'Gem',
+  //   maxTokens: 1000000,
+  //   apiKey: ENV_CONFIG.GEMINI_API_KEY,
+  //   baseURL: "https://generativelanguage.googleapis.com/v1beta",
+  //   inputPricePerMillion: 0.10,
+  //   outputPricePerMillion: 0.40,
+  //   isFree: true
+  // },
   // {
   //   id: 'gemini-2.0-flash-lite',
   //   name: 'Gemini 2.0 Flash-Lite',
@@ -128,18 +128,18 @@ export const AI_MODELS: AIModelConfig[] = [
   //   isFree: false
   // },
   // // GPT
-  {
-    id: 'gpt-5.2',
-    name: 'GPT-5.2',
-    description: 'Best overall quality',
-    icon: 'GPT',
-    maxTokens: 128000,
-    apiKey: ENV_CONFIG.OPENAI_API_KEY,
-    baseURL: "https://api.openai.com/v1",
-    inputPricePerMillion: 1.75,
-    outputPricePerMillion: 14.00,
-    isFree: false
-  },
+  // {
+  //   id: 'gpt-5.2',
+  //   name: 'GPT-5.2',
+  //   description: 'Best overall quality',
+  //   icon: 'GPT',
+  //   maxTokens: 128000,
+  //   apiKey: ENV_CONFIG.OPENAI_API_KEY,
+  //   baseURL: "https://api.openai.com/v1",
+  //   inputPricePerMillion: 1.75,
+  //   outputPricePerMillion: 14.00,
+  //   isFree: false
+  // },
   // {
   //   id: 'gpt-5',
   //   name: 'GPT-5',
@@ -213,18 +213,18 @@ export const AI_MODELS: AIModelConfig[] = [
   //   isFree: false
   // },
   // /////claude - Latest
-  {
-    id: 'claude-opus-4-6',
-    name: 'Claude Opus 4.6',
-    description: 'Most intelligent - Best for agents & coding',
-    icon: 'Cl',
-    maxTokens: 131072,
-    apiKey: ENV_CONFIG.CLAUDE_API_KEY,
-    baseURL: "https://api.anthropic.com/v1",
-    inputPricePerMillion: 5.00,
-    outputPricePerMillion: 25.00,
-    isFree: false
-  },
+  // {
+  //   id: 'claude-opus-4-6',
+  //   name: 'Claude Opus 4.6',
+  //   description: 'Most intelligent - Best for agents & coding',
+  //   icon: 'Cl',
+  //   maxTokens: 131072,
+  //   apiKey: ENV_CONFIG.CLAUDE_API_KEY,
+  //   baseURL: "https://api.anthropic.com/v1",
+  //   inputPricePerMillion: 5.00,
+  //   outputPricePerMillion: 25.00,
+  //   isFree: false
+  // },
   // {
   //   id: 'claude-sonnet-4-6',
   //   name: 'Claude Sonnet 4.6',
