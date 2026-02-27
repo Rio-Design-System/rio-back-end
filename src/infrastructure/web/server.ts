@@ -69,15 +69,6 @@ export class Server {
       res.sendFile(join(pagesDir, 'home.html'));
     });
 
-    // Payment redirect pages
-    this.app.get('/payments/success', (_req, res) => {
-      res.sendFile(join(pagesDir, 'payment-successful.html'));
-    });
-
-    this.app.get('/payments/cancel', (_req, res) => {
-      res.sendFile(join(pagesDir, 'payment-cancelled.html'));
-    });
-
     // Routes
     this.app.use('/api', (req, res, next) => {
       this.container.authMiddleware.requireAuthForApi(req, res, next);
@@ -91,7 +82,7 @@ export class Server {
     this.app.use('/api/ui-library', uiLibraryRoutes(this.container.uiLibraryController));
     this.app.use('/api/payments', paymentRoutes(this.container.paymentController));
     this.app.use('/api/subscriptions', subscriptionRoutes(this.container.subscriptionController));
-    this.app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+    // this.app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
   }
 
   private configureErrorHandling(): void {
