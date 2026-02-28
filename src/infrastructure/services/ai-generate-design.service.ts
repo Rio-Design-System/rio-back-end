@@ -275,7 +275,8 @@ export class AiGenerateDesignService implements IAiDesignService {
         aiModel: AIModelConfig,
         messages: AiMessage[]
     ): Promise<CompletionResult> {
-        let completion = await this.createCompletionWithRetry(openai, {
+        // let completion = await this.createCompletionWithRetry(openai, {
+        let completion = await openai.chat.completions.create({
             model: aiModel.id,
             messages: messages,
             tools: iconTools,
@@ -299,7 +300,8 @@ export class AiGenerateDesignService implements IAiDesignService {
             messages.push(...toolResults as any);
 
             // Get next completion
-            completion = await this.createCompletionWithRetry(openai, {
+            // completion = await this.createCompletionWithRetry(openai, {
+            completion = await openai.chat.completions.create({
                 model: aiModel.id,
                 messages: messages,
                 tools: iconTools,
@@ -324,6 +326,7 @@ export class AiGenerateDesignService implements IAiDesignService {
         inputContent: string,
         outputContent: string
     ): CostBreakdown {
+        console.log("usage:", usage);
         const inputTokens = usage?.prompt_tokens ?? this.costCalculator.estimateTokens(inputContent);
         const outputTokens = usage?.completion_tokens ?? this.costCalculator.estimateTokens(outputContent);
 
