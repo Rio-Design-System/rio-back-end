@@ -11,12 +11,6 @@ export const ENV_CONFIG = {
     MISTRAL_API_KEY: process.env.MISTRAL_API_KEY!,
     POE_API_KEY: process.env.POE_API_KEY!,
 
-    // Trello API Configuration
-    TRELLO_API_BASE_URL: 'https://api.trello.com/1',
-    TRELLO_API_KEY: process.env.TRELLO_API_KEY,
-    TRELLO_TOKEN: process.env.TRELLO_TOKEN,
-    TRELLO_BOARD_ID: process.env.TRELLO_BOARD_ID,
-
     // Database Configuration
     DATABASE_URL: process.env.DATABASE_URL,
 
