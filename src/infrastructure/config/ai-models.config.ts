@@ -30,18 +30,18 @@ export const AI_MODELS: AIModelConfig[] = [
     outputPricePerMillion: 2.00,
     isFree: true
   },
-  {
-    id: 'gemini-2.5-flash',
-    name: 'Gemini 2.5 Flash',
-    description: 'Best price-performance - Adaptive thinking',
-    icon: 'Gem',
-    maxTokens: 1000000,
-    apiKey: ENV_CONFIG.GEMINI_API_KEY,
-    baseURL: "https://generativelanguage.googleapis.com/v1beta",
-    inputPricePerMillion: 0.30,
-    outputPricePerMillion: 2.50,
-    isFree: true
-  },
+  // {
+  //   id: 'gemini-2.5-flash',
+  //   name: 'Gemini 2.5 Flash',
+  //   description: 'Best price-performance - Adaptive thinking',
+  //   icon: 'Gem',
+  //   maxTokens: 1000000,
+  //   apiKey: ENV_CONFIG.GEMINI_API_KEY,
+  //   baseURL: "https://generativelanguage.googleapis.com/v1beta",
+  //   inputPricePerMillion: 0.30,
+  //   outputPricePerMillion: 2.50,
+  //   isFree: true
+  // },
   {
     id: 'claude-opus-4.6',
     name: 'Claude Opus 4.6',
