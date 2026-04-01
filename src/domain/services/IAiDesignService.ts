@@ -9,9 +9,7 @@ export interface ConversationMessage {
 }
 
 export interface DesignGenerationResult {
-    message: string;
     design: any;
-    previewHtml?: string | null;
     cost: CostBreakdown;
 }
 
@@ -21,6 +19,7 @@ export interface IAiDesignService {
         history: ConversationMessage[],
         modelId: string,
         designSystemId: string,
+        imageDataUrl?: string,
     ): Promise<DesignGenerationResult>;
 
     editDesignWithAI(
@@ -35,6 +34,8 @@ export interface IAiDesignService {
         userMessage: string,
         history: ConversationMessage[],
         referenceToon: string,
-        modelId: string
+        modelId: string,
+        pinnedInstructions?: string,
+        imageDataUrl?: string,
     ): Promise<DesignGenerationResult>;
 }

@@ -37,7 +37,7 @@ export class DesignController {
 
     // Generate design from conversation with history
     async generateFromConversation(req: Request, res: Response): Promise<void> {
-        const { message, history, modelId, designSystemId } = req.body;
+        const { message, history, modelId, designSystemId, imageDataUrl } = req.body;
 
         try {
             const userId = this.getUserId(req);
@@ -47,7 +47,8 @@ export class DesignController {
                 message,
                 history || [],
                 modelId,
-                designSystemId
+                designSystemId,
+                imageDataUrl,
             );
 
             const points = await this.applyPointsDeduction(
@@ -66,7 +67,6 @@ export class DesignController {
                 designSystemId: designSystemId ?? null,
                 conversationHistory: history || [],
                 resultDesign: result.design ?? null,
-                aiMessage: result.message ?? null,
                 status: 'success',
                 inputTokens: result.cost?.inputTokens ?? null,
                 outputTokens: result.cost?.outputTokens ?? null,
@@ -76,9 +76,7 @@ export class DesignController {
 
             res.status(200).json({
                 success: true,
-                message: result.message,
                 design: result.design,
-                previewHtml: result.previewHtml,
                 cost: result.cost,
                 points,
                 metadata: {
@@ -153,7 +151,6 @@ export class DesignController {
                 conversationHistory: history || [],
                 currentDesign: currentDesign ?? null,
                 resultDesign: result.design ?? null,
-                aiMessage: result.message ?? null,
                 status: 'success',
                 inputTokens: result.cost?.inputTokens ?? null,
                 outputTokens: result.cost?.outputTokens ?? null,
@@ -163,9 +160,7 @@ export class DesignController {
 
             res.status(200).json({
                 success: true,
-                message: result.message,
                 design: result.design,
-                previewHtml: result.previewHtml,
                 cost: result.cost,
                 points,
                 metadata: {
@@ -208,18 +203,25 @@ export class DesignController {
 
     // Generate design based on existing design's style
     async generateBasedOnExisting(req: Request, res: Response): Promise<void> {
-        const { message, history, referenceDesign, modelId } = req.body;
+        const { message, history, referenceDesigns, modelId, pinnedComponentNames, imageDataUrl } = req.body;
 
         try {
 
             const userId = this.getUserId(req);
             await this.ensureModelUsable(userId, modelId);
 
+            // referenceDesigns is an array of all references — buildReferenceContext handles arrays natively
+            const allReferences = Array.isArray(referenceDesigns) && referenceDesigns.length > 0
+                ? referenceDesigns
+                : referenceDesigns; // fallback (should always be array)
+
             const result: DesignGenerationResult = await this.generateDesignBasedOnExistingUseCase.execute(
                 message,
                 history || [],
-                referenceDesign,
-                modelId
+                allReferences,
+                modelId,
+                Array.isArray(pinnedComponentNames) ? pinnedComponentNames : undefined,
+                imageDataUrl,
             );
 
             const points = await this.applyPointsDeduction(
@@ -236,9 +238,8 @@ export class DesignController {
                 operationType: 'create_by_reference',
                 modelId,
                 conversationHistory: history || [],
-                referenceDesign: referenceDesign ?? null,
+                referenceDesign: Array.isArray(referenceDesigns) ? referenceDesigns[0] ?? null : null,
                 resultDesign: result.design ?? null,
-                aiMessage: result.message ?? null,
                 status: 'success',
                 inputTokens: result.cost?.inputTokens ?? null,
                 outputTokens: result.cost?.outputTokens ?? null,
@@ -248,9 +249,7 @@ export class DesignController {
 
             res.status(200).json({
                 success: true,
-                message: result.message,
                 design: result.design,
-                previewHtml: result.previewHtml,
                 cost: result.cost,
                 points,
                 metadata: {
@@ -316,7 +315,6 @@ export class DesignController {
                 operationType: 'prototype',
                 modelId,
                 resultConnections: result.connections ?? null,
-                aiMessage: result.message ?? null,
                 status: 'success',
                 inputTokens: result?.cost?.inputTokens ?? null,
                 outputTokens: result?.cost?.outputTokens ?? null,
@@ -327,7 +325,6 @@ export class DesignController {
             const response = {
                 success: true,
                 connections: result.connections,
-                message: result.message,
                 cost: result.cost,
                 points,
             };

@@ -4,11 +4,43 @@ import { jsonrepair } from 'jsonrepair';
 
 export class ResponseParserService {
 
+    private getDepth(str: string): number {
+        let depth = 0, inString = false, escape = false;
+        for (let i = 0; i < str.length; i++) {
+            const ch = str[i];
+            if (escape) { escape = false; continue; }
+            if (ch === '\\' && inString) { escape = true; continue; }
+            if (ch === '"') { inString = !inString; continue; }
+            if (inString) continue;
+            if (ch === '{' || ch === '[') depth++;
+            else if (ch === '}' || ch === ']') depth--;
+        }
+        return depth;
+    }
+
+    /**
+     * Fixes JSON where the AI generated extra closing brackets inside the data array,
+     * causing the outer object to close prematurely.
+     * Strategy: balance the brackets until depth reaches 0.
+     */
+    private fixExtraClosingBrackets(json: string): string {
+        while (this.getDepth(json) !== 0) {
+            if (this.getDepth(json) < 0) {
+                const lastClose = Math.max(json.lastIndexOf('}'), json.lastIndexOf(']'));
+                if (lastClose === -1) break;
+                json = json.slice(0, lastClose) + json.slice(lastClose + 1);
+            } else {
+                json = json + '}';
+            }
+        }
+        return json;
+    }
+
     /**
      * Universal parser for all AI responses.
-     * Expects JSON format: { "data": [...], "message": "..." }
+     * Expects JSON format: { "data": [...] }
      */
-    parseAIResponse(response: string): { data: any[]; message: string } {
+    parseAIResponse(response: string): { data: any[] } {
         try {
             let cleaned = response.trim();
 
@@ -31,14 +63,20 @@ export class ResponseParserService {
                 parsed = JSON.parse(jsonMatch[0]);
             } catch (parseError) {
                 console.warn('JSON.parse failed, attempting repair with jsonrepair...', parseError);
-                const repaired = jsonrepair(jsonMatch[0]);
-                parsed = JSON.parse(repaired);
-                console.log('✅ JSON successfully repaired and parsed');
+                try {
+                    const repaired = jsonrepair(jsonMatch[0]);
+                    parsed = JSON.parse(repaired);
+                    console.log('✅ JSON successfully repaired and parsed');
+                } catch (repairError) {
+                    console.warn('jsonrepair failed, attempting bracket balancing...', repairError);
+                    const balanced = this.fixExtraClosingBrackets(jsonMatch[0]);
+                    parsed = JSON.parse(balanced);
+                    console.log('✅ JSON successfully bracket-balanced and parsed');
+                }
             }
 
             return {
                 data: parsed.data || [],
-                message: parsed.message || 'Done'
             };
 
         } catch (error: any) {
