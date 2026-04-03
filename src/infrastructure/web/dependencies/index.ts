@@ -15,6 +15,11 @@ import { PointsService } from "../../services/payment/points.service";
 import { StripeService } from "../../services/payment/stripe.service";
 import { JwtService } from "../../services/auth/jwt.service";
 import { S3Service } from "../../services/storage/s3.service";
+import { IconExtractorService } from "../../services/ai/icon-extractor.service";
+import { IconPostProcessorService } from "../../services/ai/icon-post-processor.service";
+import { PinnedComponentExtractorService } from "../../services/ai/pinned-component-extractor.service";
+import { PinnedComponentPostProcessorService } from "../../services/ai/pinned-component-post-processor.service";
+import { WireframeBuilderService } from "../../services/ai/wireframe-builder.service";
 
 
 // Repositories
@@ -105,6 +110,11 @@ export const setupDependencies = () => {
     const pointsService = new PointsService(userRepository);
     const jwtService = new JwtService();
     const s3Service = new S3Service();
+    const iconExtractorService = new IconExtractorService();
+    const iconPostProcessorService = new IconPostProcessorService(iconExtractorService);
+    const pinnedComponentExtractorService = new PinnedComponentExtractorService();
+    const pinnedComponentPostProcessorService = new PinnedComponentPostProcessorService();
+    const wireframeBuilderService = new WireframeBuilderService();
 
     const defaultAiDesignService = new AiGenerateDesignService(
         aiCostCalculatorService,
@@ -112,13 +122,19 @@ export const setupDependencies = () => {
         toolCallHandler,
         responseParser,
         messageBuilder,
+        s3Service,
     );
 
     const generateDesignFromConversationUseCase = new GenerateDesignFromConversationUseCase(defaultAiDesignService);
     const editDesignWithAIUseCase = new EditDesignWithAIUseCase(defaultAiDesignService);
     const generateDesignBasedOnExistingUseCase = new GenerateDesignBasedOnExistingUseCase(
         defaultAiDesignService,
-        jsonToToonService
+        jsonToToonService,
+        iconExtractorService,
+        iconPostProcessorService,
+        pinnedComponentExtractorService,
+        pinnedComponentPostProcessorService,
+        wireframeBuilderService,
     );
 
     const generatePrototypeConnectionsUseCase = new GeneratePrototypeConnectionsUseCase(

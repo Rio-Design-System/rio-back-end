@@ -43,6 +43,11 @@ export const generateFromConversationValidation = [
         .isString().withMessage('Design System ID must be a string')
         .isIn(DESIGN_SYSTEMS.map(designSystem => designSystem.id)).withMessage('Invalid design system'),
 
+    body('imageDataUrl')
+        .optional({ nullable: true })
+        .isString().withMessage('imageDataUrl must be a string')
+        .matches(/^data:image\/(png|jpeg|jpg|webp);base64,/).withMessage('imageDataUrl must be a valid base64 image data URL'),
+
 ];
 
 export const editWithAIValidation = [
@@ -79,8 +84,8 @@ export const generateBasedOnExistingValidation = [
         .notEmpty().withMessage('Message is required')
         .isString().withMessage('Message must be a string'),
 
-    body('referenceDesign')
-        .notEmpty().withMessage('Reference design is required'),
+    body('referenceDesigns')
+        .isArray({ min: 1 }).withMessage('At least one reference design is required'),
 
     body('history')
         .optional()
@@ -135,6 +140,7 @@ export const uploadComponentImageValidation = [
     body('image')
         .notEmpty().withMessage('Image is required')
         .isString().withMessage('Image must be a string')
+        .isLength({ max: 5 * 1024 * 1024 }).withMessage('Image must be less than 5MB')
         .matches(/^data:image\/(png|jpeg|jpg|webp);base64,/).withMessage('Image must be a valid base64 data URL'),
 ];
 

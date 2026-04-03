@@ -11,21 +11,31 @@ import {
     createDesignPrompt,
     editDesignPrompt,
     basedOnExistingPrompt,
-    prototypeConnectionsPrompt
+    prototypeConnectionsPrompt,
+    imageInstructionPrompt,
+    imageReferenceInstructionPrompt,
 } from '../../config/prompt.config';
 
 
+export type AiMessageContent =
+    | string
+    | Array<
+        | { type: 'text'; text: string }
+        | { type: 'image_url'; image_url: { url: string } }
+    >;
+
 export interface AiMessage {
     role: 'system' | 'user' | 'assistant';
-    content: string;
+    content: AiMessageContent;
 }
 
 export class MessageBuilderService {
 
     buildConversationMessages(
         currentMessage: string,
-        history: ConversationMessage[],
-        designSystemId: string
+        _history: ConversationMessage[],
+        designSystemId: string,
+        imageDataUrl?: string,
     ): AiMessage[] {
         const designSystem = getDesignSystemById(designSystemId);
         const systemPrompt = [
@@ -40,18 +50,20 @@ export class MessageBuilderService {
             { role: 'system', content: systemPrompt }
         ];
 
-        const recentHistory = history.slice(-3);
-        for (const msg of recentHistory) {
+        if (imageDataUrl) {
             messages.push({
-                role: msg.role as 'user' | 'assistant',
-                content: msg.content
+                role: 'user',
+                content: [
+                    { type: 'image_url', image_url: { url: imageDataUrl } },
+                    { type: 'text', text: `${imageInstructionPrompt} ${currentMessage}` },
+                ],
+            });
+        } else {
+            messages.push({
+                role: 'user',
+                content: currentMessage,
             });
         }
-
-        messages.push({
-            role: 'user',
-            content: currentMessage
-        });
 
         return messages;
     }
@@ -75,13 +87,13 @@ export class MessageBuilderService {
             { role: 'system', content: systemPrompt }
         ];
 
-        const recentHistory = history.slice(-3);
-        for (const msg of recentHistory) {
-            messages.push({
-                role: msg.role as 'user' | 'assistant',
-                content: msg.content
-            });
-        }
+        // const recentHistory = history.slice(-3);
+        // for (const msg of recentHistory) {
+        //     messages.push({
+        //         role: msg.role as 'user' | 'assistant',
+        //         content: msg.content
+        //     });
+        // }
 
         messages.push({
             role: 'user',
@@ -94,7 +106,9 @@ export class MessageBuilderService {
     buildBasedOnExistingMessages(
         currentMessage: string,
         history: ConversationMessage[],
-        referenceToon: string
+        referenceToon: string,
+        pinnedInstructions?: string,
+        imageDataUrl?: string,
     ): AiMessage[] {
         const systemPrompt = [
             basedOnExistingPrompt,
@@ -107,18 +121,22 @@ export class MessageBuilderService {
             { role: 'system', content: systemPrompt }
         ];
 
-        const recentHistory = history.slice(-3);
-        for (const msg of recentHistory) {
-            messages.push({
-                role: msg.role as 'user' | 'assistant',
-                content: msg.content
-            });
-        }
+        const pinnedBlock = pinnedInstructions ? `\n\n${pinnedInstructions}` : '';
 
-        messages.push({
-            role: 'user',
-            content: `REFERENCE DESIGN:\n\`\`\`\n${referenceToon}\n\`\`\`\n\nUSER REQUEST: ${currentMessage}`
-        });
+        if (imageDataUrl) {
+            // Combined mode: structure from image, design system from reference
+            const textContent = `${imageReferenceInstructionPrompt} ${currentMessage}\n\nREFERENCE DESIGN:\n\`\`\`json\n${referenceToon}\n\`\`\`${pinnedBlock}`;
+            messages.push({
+                role: 'user',
+                content: [
+                    { type: 'image_url', image_url: { url: imageDataUrl } },
+                    { type: 'text', text: textContent },
+                ],
+            });
+        } else {
+            const userContent = `REFERENCE DESIGN:\n\`\`\`json\n${referenceToon}\n\`\`\`${pinnedBlock}\n\nUSER REQUEST: ${currentMessage}`;
+            messages.push({ role: 'user', content: userContent });
+        }
 
         return messages;
     }

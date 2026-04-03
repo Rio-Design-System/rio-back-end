@@ -25,6 +25,14 @@ import designGenerationRoutes from './routes/design-generation.routes';
 import { setupDependencies } from './dependencies';
 
 import { logger } from './middleware/logger.middleware';
+import {
+  authLimiter,
+  aiLimiterPerMinute,
+  uploadLimiter,
+  paymentLimiter,
+  webhookLimiter,
+} from './middleware/rate-limit.middleware';
+import { aiConcurrencyLimiter } from './middleware/concurrency-limit.middleware';
 
 export class Server {
   private app: Application;
@@ -70,24 +78,21 @@ export class Server {
       res.sendFile(join(pagesDir, 'home.html'));
     });
 
-    // Contact redirect
-    this.app.get('/contact', (_, res) => {
-      res.send(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Contact</title></head><body><script>window.location.href='mailto:riodesigns2026@gmail.com';</script><p>Opening mail client... <a href="mailto:riodesigns2026@gmail.com">riodesigns2026@gmail.com</a></p></body></html>`);
-    });
-
     // Routes
     this.app.use('/api', (req, res, next) => {
       this.container.authMiddleware.requireAuthForApi(req, res, next);
     });
 
-    this.app.use('/auth', authRoutes(this.container.authController));
-    this.app.use('/api/designs', designRoutes(this.container.designController));
+    this.app.use('/auth', authLimiter, authRoutes(this.container.authController));
+    this.app.use('/api/designs', aiLimiterPerMinute, aiConcurrencyLimiter, designRoutes(this.container.designController));
     this.app.use('/api/ai-models', aiModelsRoutes(this.container.aiModelsController));
     this.app.use('/api/design-systems', designSystemsRoutes(this.container.designSystemsController));
     this.app.use('/api/errors', clientErrorRoutes(this.container.clientErrorController));
+    this.app.use('/api/ui-library/components/upload-image', uploadLimiter);
     this.app.use('/api/ui-library', uiLibraryRoutes(this.container.uiLibraryController));
-    this.app.use('/api/payments', paymentRoutes(this.container.paymentController));
-    this.app.use('/api/subscriptions', subscriptionRoutes(this.container.subscriptionController));
+    this.app.use('/api/payments/webhook', webhookLimiter);
+    this.app.use('/api/payments', paymentLimiter, paymentRoutes(this.container.paymentController));
+    this.app.use('/api/subscriptions', paymentLimiter, subscriptionRoutes(this.container.subscriptionController));
     this.app.use('/api/design-generations', designGenerationRoutes(this.container.designGenerationController));
     // this.app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
   }
